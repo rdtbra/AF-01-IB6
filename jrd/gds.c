@@ -3239,9 +3239,10 @@ void API_ROUTINE gds__qtoq (
 }
 
 void API_ROUTINE gds__register_cleanup (
-    void	(*routine)(),
-    void	*arg)
+  void (*routine)(),
+  void *arg)
 {
+/* RDT: 20260318 - Registra função de cleanup. */
 /**************************************
  *
  *	g d s _ r e g i s t e r _ c l e a n u p
@@ -3258,22 +3259,23 @@ void API_ROUTINE gds__register_cleanup (
  * determining when a task ends, therefore this never gets called.
 */
 
-CLEAN	clean;
+  CLEAN clean;
 
-if (!initialized)
-   init();
+  if (!initialized)
+    init();
 
-clean = (CLEAN) ALLOC_LIB_MEMORY ((SLONG) sizeof (struct clean));
-clean->clean_next = cleanup_handlers;
-cleanup_handlers = clean;
-clean->clean_routine = routine;
-clean->clean_arg = arg;
+  clean = (CLEAN) ALLOC_LIB_MEMORY ((SLONG) sizeof (struct clean));
+  clean->clean_next = cleanup_handlers;
+  cleanup_handlers = clean;
+  clean->clean_routine = routine;
+  clean->clean_arg = arg;
 
 #ifdef DEBUG_GDS_ALLOC
-/* Startup function - known to be unfreed */
-gds_alloc_flag_unfreed ((void *)clean);
+  /* Startup function - known to be unfreed */
+  gds_alloc_flag_unfreed ((void *)clean);
 #endif
 }
+
 
 SLONG API_ROUTINE gds__sqlcode (
     STATUS	*status_vector)
