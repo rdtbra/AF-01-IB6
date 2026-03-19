@@ -146,12 +146,12 @@ int API_ROUTINE gds__thread_enable (
   {
     enabled = TRUE;
     SCH_init();
-	/* RDT: 20260318 - Agora, com enable_flag negativo, chamaremos THD_init */
+    /* RDT: 20260318 - Agora, com enable_flag negativo, chamaremos THD_init */
     if (enable_flag < 0 && !multi_threaded)
     {
-	  multi_threaded = TRUE;
-	  THD_INIT;
-	}
+      multi_threaded = TRUE;
+      THD_INIT;
+    }
   }
 
   return enabled;
