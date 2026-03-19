@@ -127,7 +127,7 @@ sys$wake (0,0);
 #endif
 
 int API_ROUTINE gds__thread_enable (
-    int		enable_flag)
+  int enable_flag)
 {
 /**************************************
  *
@@ -140,18 +140,21 @@ int API_ROUTINE gds__thread_enable (
  *
  **************************************/
 
-if (enable_flag)
-    {
+  /* RDT: 20260318 - com -1, enable_flag o if vai ser validado como true, então estamos habilitando 
+     o sistema de threads. Em seguida SCH_init é chamado. */	
+  if (enable_flag)
+  {
     enabled = TRUE;
     SCH_init();
+	/* RDT: 20260318 - Agora, com enable_flag negativo, chamaremos THD_init */
     if (enable_flag < 0 && !multi_threaded)
-	{
-	multi_threaded = TRUE;
-	THD_INIT;
+    {
+	  multi_threaded = TRUE;
+	  THD_INIT;
 	}
-    }
+  }
 
-return enabled;
+  return enabled;
 }
 
 void API_ROUTINE gds__thread_enter (void)
