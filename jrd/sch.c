@@ -551,6 +551,7 @@ schedule_active (TRUE);
 }
 
 void SCH_init (void)
+/* RDT: 20260318 - Inicialização do scheduler de threads. */
 {
 /**************************************
  *
@@ -562,15 +563,18 @@ void SCH_init (void)
  *	Initialize the thread scheduler.
  *
  **************************************/
-int	mutex_state;
+  int mutex_state;
 
-if (init_flag)
+  /* RDT: 20260318 - Não inicializar se já foi inicializado. :) */
+  if (init_flag)
     return;
 
-init_flag = TRUE;
-gds__register_cleanup (cleanup, NULL_PTR);
+  init_flag = TRUE;
+  /* RDT: 20260318 - Registrar função de cleanup. */
+  gds__register_cleanup (cleanup, NULL_PTR);
 
-if (mutex_state = THD_mutex_init (thread_mutex))
+  /* RDT: 20260318 - Tem um mutex que está sendo inicializado também. */	
+  if (mutex_state = THD_mutex_init (thread_mutex))
     mutex_bugcheck ("mutex init", mutex_state);
 }
 
