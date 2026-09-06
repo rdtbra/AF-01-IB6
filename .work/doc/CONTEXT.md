@@ -67,6 +67,22 @@ O socket listener fica associado à porta do serviço, como `3050`. Quando ocorr
 
 `main_port` é a `PORT` principal recebida por `SRVR_multi_thread()`. No SuperServer multi-clientes, ela representa a porta-mãe/listener. `RECEIVE(main_port, ...)` monitora essa porta e, ao detectar uma nova conexão, `accept()` cria uma nova `PORT` para o cliente. A `main_port` não é a conexão individual de cada cliente.
 
+### O que `set_server()` procura
+
+O “servidor” de `set_server()` não é uma conexão TCP, um processo novo ou uma thread nova. A função percorre a lista global `servers` e compara `port->port_type` com `server->srvr_port_type` — por exemplo, o tipo `port_inet`. Se não houver uma estrutura lógica `SRVR` para aquele tipo de transporte, aloca uma nova estrutura, registra `srvr_parent_port` e as flags, e associa o resultado em `port->port_server`.
+
+Assim, `set_server()` reutiliza ou cria um contexto lógico do servidor por tipo de transporte. A conexão específica do cliente já é representada por uma `PORT` própria, criada no `accept()`; ela não é localizada por seu par `IP:porta` em `set_server()`. Também não há criação de socket, processo ou thread nessa função.
+
+O objetivo prático de `port->port_server` é permitir que o restante do servidor trate a `PORT` sabendo a que grupo lógico ela pertence e qual é sua porta-pai. O dispatcher usa `srvr_parent_port` para distinguir a porta principal das portas de clientes, localizar a conexão correta na lista `port_clients` e aplicar corretamente operações como processamento e encerramento.
+
+`main_port` tem, sim, um tipo: `port->port_type`. Para uma conexão TCP/IP, `INET` define esse campo como `port_inet`. Esse tipo indica o transporte e permite selecionar/comparar a implementação compatível — por exemplo, INET, XNET, IPC, DECnet ou named pipe. Não é o tipo do cliente nem uma identificação de `IP:porta`; é uma classificação do mecanismo de comunicação. Em geral, `set_server()` mantém um `SRVR` lógico por valor de `port_type` dentro daquele processo.
+
+Se um único processo inicializasse efetivamente TCP/IP e IPC, sua lista `servers` teria duas entradas: uma para `port_inet` e outra para `port_ipc`. Neste código histórico, contudo, os entry points aparecem separados: `inet_server.c` conduz o servidor INET/TCP, enquanto `ipc_server.c` conduz o servidor IPC. Como `servers` é uma variável global do processo, não se deve somar automaticamente os `SRVR`s dos dois executáveis como se fossem uma única lista; cada processo cria suas próprias entradas conforme os transportes que inicializa.
+
+Essa separação no Linux é uma decisão da organização histórica dos executáveis, não uma obrigação do sistema operacional. O código Windows possui entry points/rotinas que podem reunir mais de um transporte no mesmo processo; nesse desenho, se TCP/IP e IPC criarem `PORT`s no mesmo processo, a lista poderá conter os dois `SRVR`s. Um servidor Linux também poderia ser reestruturado para fazer isso, desde que tivesse um dispatcher capaz de monitorar os dois mecanismos.
+
+Síntese por plataforma neste código histórico: no Windows, um processo/entry point pode reunir transportes diferentes e usar threads para o dispatcher e/ou atendimento das portas; no Linux/Unix, a organização tradicional separa os entry points por transporte, como `gds_inet_server` para INET/TCP e `ipc_server` para IPC. Essa separação é por tipo de transporte/servidor, não necessariamente um processo por conexão: as conexões podem ser multiplexadas por um servidor multi-clientes, atendidas por threads ou, em configurações Classic/`inetd`, por processos separados conforme o modo de execução.
+
 Não há ganho automático de desempenho em dividir um serviço em várias portas. Uma única porta pode multiplexar muitas conexões; a separação em portas diferentes é útil principalmente para isolamento, regras de firewall, protocolos distintos ou arquiteturas específicas de balanceamento.
 
 A porta usada pelo cliente é normalmente efêmera: escolhida automaticamente pelo sistema operacional para uma conexão de saída e liberada depois. Firewalls com estado normalmente precisam apenas permitir a saída do cliente para a porta conhecida do servidor e a entrada do servidor nessa porta; o tráfego de retorno para a porta efêmera é permitido por pertencer à conexão já estabelecida. Firewalls stateless ou políticas de saída muito restritivas podem exigir regras adicionais.
